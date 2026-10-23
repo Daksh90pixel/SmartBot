@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBot | AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">S</div>
+            <div>
+                <h2>SmartBot</h2>
+                <span>AI Assistant</span>
+            </div>
+        </div>
+
+        <button class="new-chat" onclick="clearChat()">
+            <span>＋</span> New Chat
+        </button>
+
+        <div class="sidebar-section">
+            <p class="section-title">YOUR ASSISTANT</p>
+            <div class="sidebar-item active">
+                <span>✦</span> SmartBot AI
+            </div>
+            <div class="sidebar-item">
+                <span>◈</span> Powered by Gemini
+            </div>
+        </div>
+
+        <div class="sidebar-bottom">
+            <div class="profile">
+                <div class="profile-avatar">S</div>
+                <div>
+                    <strong>SmartBot User</strong>
+                    <small>Personal Assistant</small>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h3>AI Chat Assistant</h3>
+                <p>Ask anything. Get intelligent answers.</p>
+            </div>
+
+            <div class="online-status">
+                <span class="status-dot"></span>
+                Online
+            </div>
+        </header>
+
+        <section class="chat-area" id="chatArea">
+
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-icon">✦</div>
+
+                <h1>How can I help you today?</h1>
+
+                <p>
+                    I'm SmartBot, your AI assistant. Ask me questions,
+                    explore ideas or get help with everyday tasks.
+                </p>
+
+                <div class="suggestions">
+                    <button onclick="useSuggestion('Explain artificial intelligence in simple words')">
+                        <span>✧</span>
+                        <strong>Learn something</strong>
+                        <small>Explain a complex topic</small>
+                    </button>
+
+                    <button onclick="useSuggestion('Give me some creative project ideas')">
+                        <span>◇</span>
+                        <strong>Generate ideas</strong>
+                        <small>Explore creative possibilities</small>
+                    </button>
+
+                    <button onclick="useSuggestion('Help me write a professional email')">
+                        <span>✎</span>
+                        <strong>Write something</strong>
+                        <small>Create professional content</small>
+                    </button>
+
+                    <button onclick="useSuggestion('Teach me Python programming')">
+                        <span>⌘</span>
+                        <strong>Learn coding</strong>
+                        <small>Understand programming</small>
+                    </button>
+                </div>
+            </div>
+
+            <div id="messages"></div>
+
+        </section>
+
+        <footer class="input-section">
+            <div class="input-wrapper">
+
+                <textarea
+                    id="messageInput"
+                    placeholder="Message SmartBot..."
+                    rows="1"
+                    onkeydown="handleKey(event)"
+                ></textarea>
+
+                <button id="sendButton" onclick="sendMessage()">
+                    ↑
+                </button>
+
+            </div>
+
+            <p class="disclaimer">
+                SmartBot can make mistakes. Verify important information.
+            </p>
+        </footer>
+
+    </main>
+
+</div>
+
+<script>
+
+const input = document.getElementById("messageInput");
+const messages = document.getElementById("messages");
+const welcome = document.getElementById("welcomeScreen");
+const sendButton = document.getElementById("sendButton");
+
+function handleKey(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function useSuggestion(text) {
+    input.value = text;
+    sendMessage();
+}
+
+function clearChat() {
+    messages.innerHTML = "";
+    welcome.style.display = "flex";
+}
+
+function addMessage(text, sender) {
+
+    welcome.style.display = "none";
+
+    const row = document.createElement("div");
+    row.className = "message-row " + sender;
+
+    const avatar = document.createElement("div");
+    avatar.className = "message-avatar";
+    avatar.textContent = sender === "user" ? "Y" : "S";
+
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+    bubble.textContent = text;
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+
+    messages.appendChild(row);
+
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function showTyping() {
+
+    const typing = document.createElement("div");
+    typing.className = "message-row bot";
+    typing.id = "typingIndicator";
+
+    typing.innerHTML = `
+        <div class="message-avatar">S</div>
+        <div class="message-bubble typing">
+            <span></span><span></span><span></span>
+        </div>
+    `;
+
+    welcome.style.display = "none";
+    messages.appendChild(typing);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+async function sendMessage() {
+
+    const message = input.value.trim();
+
+    if (!message || sendButton.disabled) return;
+
+    addMessage(message, "user");
+
+    input.value = "";
+    input.style.height = "auto";
+
+    sendButton.disabled = true;
+    showTyping();
+
+    try {
+
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        const data = await response.json();
+
+        document.getElementById("typingIndicator")?.remove();
+
+        if (!response.ok) {
+            throw new Error(data.response || "Something went wrong.");
+        }
+
+        addMessage(data.response, "bot");
+
+    } catch (error) {
+
+        document.getElementById("typingIndicator")?.remove();
+
+        addMessage(
+            "Sorry, something went wrong. Please try again.",
+            "bot"
+        );
+
+        console.error(error);
+
+    } finally {
+
+        sendButton.disabled = false;
+        input.focus();
+
+    }
+}
+
+input.addEventListener("input", function() {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 130) + "px";
+});
+
+</script>
+
+</body>
+</html>
